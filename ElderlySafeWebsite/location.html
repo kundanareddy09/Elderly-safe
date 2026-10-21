@@ -1,0 +1,219 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Sharing - ElderlySafe</title>
+    <link rel="stylesheet" href="css/style.css">
+
+    <style>
+        .location-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+
+        .location-card {
+            background: white;
+            padding: 30px;
+            border-radius: 14px;
+            border: 1px solid #dce7ed;
+            box-shadow: 0 4px 18px #123c5515;
+        }
+
+        .location-card h1,
+        .location-card h2 {
+            color: #176d78;
+            margin-bottom: 15px;
+        }
+
+        .location-card p {
+            margin: 12px 0;
+        }
+
+        .location-button {
+            padding: 12px 18px;
+            margin: 12px 8px 0 0;
+            background: #176d78;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .location-button:hover {
+            background: #123c55;
+        }
+
+        #locationResult {
+            margin-top: 22px;
+            padding: 18px;
+            background: #f1f8fa;
+            border-radius: 9px;
+            overflow-wrap: anywhere;
+        }
+
+        .notice {
+            margin-top: 20px;
+            padding: 14px;
+            background: #fff5df;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <h2>ElderlySafe</h2>
+
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="contact.html">Contacts</a>
+    </nav>
+</header>
+
+<main class="location-container">
+
+    <section class="location-card">
+        <h1>My Location</h1>
+
+        <p>
+            View your current location and open it on a map.
+            Location access requires your permission.
+        </p>
+
+        <button class="location-button" id="getLocation">
+            Get My Current Location
+        </button>
+
+        <button class="location-button" id="clearLocation">
+            Clear Location
+        </button>
+
+        <div id="locationResult" aria-live="polite">
+            <h2>Location Status</h2>
+            <p>No location requested yet.</p>
+        </div>
+
+        <div class="notice">
+            <strong>Privacy notice:</strong>
+            Your location is displayed in this browser.
+            This page does not automatically send your
+            coordinates to family members or emergency services.
+        </div>
+
+        <p>
+            <a class="location-button" href="dashboard.html">
+                Back to Dashboard
+            </a>
+        </p>
+    </section>
+
+</main>
+
+<footer>
+    <p>© 2026 ElderlySafe | Community Service Project</p>
+</footer>
+
+<script>
+    const result = document.getElementById("locationResult");
+    const getButton = document.getElementById("getLocation");
+    const clearButton = document.getElementById("clearLocation");
+
+    getButton.addEventListener("click", function () {
+
+        if (!navigator.geolocation) {
+            result.textContent =
+                "Your browser does not support location access.";
+            return;
+        }
+
+        result.textContent =
+            "Requesting location permission. Please wait...";
+
+        navigator.geolocation.getCurrentPosition(
+            function (position) {
+
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+                const accuracy = position.coords.accuracy;
+
+                result.replaceChildren();
+
+                const heading = document.createElement("h2");
+                heading.textContent = "Location Retrieved";
+
+                const lat = document.createElement("p");
+                lat.textContent =
+                    "Latitude: " + latitude.toFixed(6);
+
+                const lon = document.createElement("p");
+                lon.textContent =
+                    "Longitude: " + longitude.toFixed(6);
+
+                const acc = document.createElement("p");
+                acc.textContent =
+                    "Estimated accuracy: " +
+                    Math.round(accuracy) + " metres";
+
+                const map = document.createElement("a");
+                map.href =
+                    "https://www.google.com/maps?q=" +
+                    latitude + "," + longitude;
+
+                map.target = "_blank";
+                map.rel = "noopener noreferrer";
+                map.className = "location-button";
+                map.textContent = "Open in Google Maps";
+
+                result.append(heading, lat, lon, acc, map);
+            },
+
+            function (error) {
+
+                let errorMessage =
+                    "Unable to retrieve your location.";
+
+                if (error.code === 1) {
+                    errorMessage =
+                        "Location permission was denied. Allow location access in your browser settings and try again.";
+                } else if (error.code === 2) {
+                    errorMessage =
+                        "Your location is currently unavailable. Check your device location settings.";
+                } else if (error.code === 3) {
+                    errorMessage =
+                        "The location request timed out. Please try again.";
+                }
+
+                result.textContent = errorMessage;
+            },
+
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 0
+            }
+        );
+    });
+
+    clearButton.addEventListener("click", function () {
+        result.replaceChildren();
+
+        const heading = document.createElement("h2");
+        heading.textContent = "Location Status";
+
+        const paragraph = document.createElement("p");
+        paragraph.textContent =
+            "Location details cleared from this page.";
+
+        result.append(heading, paragraph);
+    });
+</script>
+<script type="module" src="js/auth-guard.js"></script>
+</body>
+</html>

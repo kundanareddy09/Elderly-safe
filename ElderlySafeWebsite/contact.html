@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emergency Contacts - ElderlySafe</title>
+    <link rel="stylesheet" href="css/style.css">
+ 
+    <style>
+        .contacts-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+ 
+        .contact-form, .contact-list {
+            background: white;
+            padding: 25px;
+            margin-bottom: 25px;
+            border-radius: 12px;
+            border: 1px solid #dce7ed;
+            box-shadow: 0 4px 15px #123c5510;
+        }
+ 
+        .contact-form h1, .contact-list h2 {
+            color: #176d78;
+            margin-bottom: 15px;
+        }
+ 
+        .contact-form label {
+            display: block;
+            margin-top: 15px;
+            font-weight: bold;
+        }
+ 
+        .contact-form input,
+        .contact-form select {
+            width: 100%;
+            padding: 12px;
+            margin-top: 6px;
+            border: 1px solid #b8cbd5;
+            border-radius: 7px;
+            font-size: 15px;
+        }
+ 
+        .contact-form button {
+            margin-top: 20px;
+            padding: 12px 20px;
+            background: #176d78;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+ 
+        .contact-form button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+ 
+        .contact-item {
+            padding: 16px;
+            margin-top: 15px;
+            border: 1px solid #dce7ed;
+            border-radius: 9px;
+            overflow-wrap: anywhere;
+        }
+ 
+        .contact-item h3 {
+            color: #176d78;
+        }
+ 
+        .delete-button {
+            margin-top: 10px;
+            padding: 8px 12px;
+            background: #c62828;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+ 
+        #message {
+            margin-top: 15px;
+            overflow-wrap: anywhere;
+        }
+    </style>
+</head>
+ 
+<body>
+ 
+<header>
+    <h2>ElderlySafe</h2>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="login.html">Logout</a>
+    </nav>
+</header>
+ 
+<main class="contacts-container">
+ 
+    <section class="contact-form">
+        <h1>Emergency Contacts</h1>
+        <p>Add family members or caregivers who may help in an emergency.</p>
+ 
+        <form id="contactForm">
+ 
+            <label for="contactName">Contact Name</label>
+            <input type="text" id="contactName" placeholder="Enter full name" required>
+ 
+            <label for="relationship">Relationship</label>
+            <select id="relationship" required>
+                <option value="">Select relationship</option>
+                <option>Father</option>
+                <option>Mother</option>
+                <option>Son</option>
+                <option>Daughter</option>
+                <option>Spouse</option>
+                <option>Relative</option>
+                <option>Friend</option>
+                <option>Caregiver</option>
+                <option>Other</option>
+            </select>
+ 
+            <label for="phone">Phone Number</label>
+            <input
+                type="tel"
+                id="phone"
+                placeholder="Enter phone number"
+                pattern="[0-9]{10}"
+                maxlength="10"
+                inputmode="numeric"
+                title="Enter a 10-digit phone number"
+                required
+            >
+ 
+            <label for="contactEmail">Email Address (for automatic alerts)</label>
+            <input
+                type="email"
+                id="contactEmail"
+                placeholder="Enter email address"
+                autocomplete="off"
+                required
+            >
+ 
+            <button type="submit" id="addButton">Add Contact</button>
+            <p id="message" aria-live="polite"></p>
+        </form>
+    </section>
+ 
+    <section class="contact-list">
+        <h2>Saved Contacts</h2>
+        <div id="contactsList">
+            <p>Loading contacts...</p>
+        </div>
+    </section>
+ 
+</main>
+ 
+<footer>
+    <p>© 2026 ElderlySafe | Community Service Project</p>
+</footer>
+ 
+<script type="module">
+    import { auth, db } from "./js/firebase-config.js";
+    import {
+        onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+        collection,
+        addDoc,
+        deleteDoc,
+        doc,
+        onSnapshot,
+        query,
+        orderBy,
+        serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+ 
+    const form = document.getElementById("contactForm");
+    const contactsList = document.getElementById("contactsList");
+    const message = document.getElementById("message");
+    const addButton = document.getElementById("addButton");
+ 
+    let contactsRef = null;
+ 
+    function renderContacts(docs) {
+        contactsList.replaceChildren();
+ 
+        if (docs.length === 0) {
+            const empty = document.createElement("p");
+            empty.textContent = "No emergency contacts added yet.";
+            contactsList.appendChild(empty);
+            return;
+        }
+ 
+        docs.forEach(function (snapshot) {
+            const contact = snapshot.data();
+ 
+            const card = document.createElement("div");
+            card.className = "contact-item";
+ 
+            const name = document.createElement("h3");
+            name.textContent = contact.name;
+ 
+            const relationship = document.createElement("p");
+            relationship.textContent = "Relationship: " + contact.relationship;
+ 
+            const phone = document.createElement("p");
+            phone.textContent = "Phone: " + contact.phone;
+ 
+            const deleteButton = document.createElement("button");
+            deleteButton.className = "delete-button";
+            deleteButton.textContent = "Delete Contact";
+ 
+            deleteButton.addEventListener("click", function () {
+                if (!confirm("Delete this contact?")) {
+                    return;
+                }
+ 
+                deleteDoc(doc(contactsRef, snapshot.id))
+                    .then(function () {
+                        message.textContent = "Contact deleted.";
+                    })
+                    .catch(function (error) {
+                        message.textContent =
+                            "Could not delete the contact. (" + error.code + ")";
+                    });
+            });
+ 
+            card.append(name, relationship, phone);
+ 
+            if (contact.email) {
+                const email = document.createElement("p");
+                email.textContent = "Email: " + contact.email;
+                card.appendChild(email);
+            }
+ 
+            card.appendChild(deleteButton);
+            contactsList.appendChild(card);
+        });
+    }
+ 
+    onAuthStateChanged(auth, function (user) {
+        if (!user) {
+            window.location.href = "login.html";
+            return;
+        }
+ 
+        contactsRef = collection(db, "users", user.uid, "contacts");
+ 
+        onSnapshot(
+            query(contactsRef, orderBy("createdAt")),
+            function (snapshot) {
+                renderContacts(snapshot.docs);
+            },
+            function (error) {
+                contactsList.textContent =
+                    "Could not load contacts. Check your Firestore rules. (" + error.code + ")";
+            }
+        );
+    });
+ 
+    form.addEventListener("submit", function (event) {
+        event.preventDefault();
+ 
+        if (!contactsRef) {
+            message.textContent = "Still signing you in. Please try again in a moment.";
+            return;
+        }
+ 
+        const contact = {
+            name: document.getElementById("contactName").value.trim(),
+            relationship: document.getElementById("relationship").value,
+            phone: document.getElementById("phone").value.trim(),
+            email: document.getElementById("contactEmail").value.trim(),
+            createdAt: serverTimestamp()
+        };
+ 
+        if (!/^[0-9]{10}$/.test(contact.phone)) {
+            message.textContent = "Please enter a valid 10-digit phone number.";
+            return;
+        }
+ 
+        addButton.disabled = true;
+ 
+        addDoc(contactsRef, contact)
+            .then(function () {
+                message.textContent = "Contact added successfully!";
+                form.reset();
+            })
+            .catch(function (error) {
+                message.textContent =
+                    "Could not save the contact. (" + error.code + ")";
+            })
+            .finally(function () {
+                addButton.disabled = false;
+            });
+    });
+</script>
+ 
+<script type="module" src="js/auth-guard.js"></script>
+ 
+</body>
+</html>

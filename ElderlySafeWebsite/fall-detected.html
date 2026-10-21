@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fall Alert - ElderlySafe</title>
+    <link rel="stylesheet" href="css/style.css">
+ 
+    <style>
+        .alert-container {
+            max-width: 650px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+ 
+        .alert-card {
+            background: white;
+            padding: 35px 25px;
+            text-align: center;
+            border-radius: 16px;
+            border: 2px solid #f2b7b7;
+            box-shadow: 0 5px 20px #123c5515;
+        }
+ 
+        .alert-icon {
+            font-size: 55px;
+            margin-bottom: 12px;
+        }
+ 
+        .alert-card h1 {
+            color: #c62828;
+            margin-bottom: 15px;
+        }
+ 
+        .alert-card p {
+            margin: 12px 0;
+        }
+ 
+        .countdown {
+            font-size: 60px;
+            font-weight: bold;
+            color: #c62828;
+            margin: 20px 0;
+        }
+ 
+        .alert-button {
+            display: inline-block;
+            padding: 16px 26px;
+            margin: 8px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 18px;
+        }
+ 
+        .cancel-button {
+            background: #e2f5eb;
+            color: #176747;
+            font-weight: bold;
+        }
+ 
+        .help-button {
+            background: #c62828;
+            color: white;
+        }
+ 
+        .back-button {
+            background: #e7edf1;
+            color: #243447;
+            font-size: 15px;
+            padding: 12px 20px;
+        }
+ 
+        #alertMessage {
+            margin-top: 20px;
+            overflow-wrap: anywhere;
+        }
+ 
+        .demo-note {
+            margin-top: 22px;
+            padding: 14px;
+            background: #fff5df;
+            border-radius: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+ 
+<body>
+ 
+<header>
+    <h2>ElderlySafe</h2>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="dashboard.html">Dashboard</a>
+    </nav>
+</header>
+ 
+<main class="alert-container">
+ 
+    <section class="alert-card">
+        <div class="alert-icon" aria-hidden="true">⚠️</div>
+ 
+        <h1>Possible Fall Detected!</h1>
+ 
+        <p>Are you okay? Press the green button if you are safe.</p>
+ 
+        <p>If you do not respond, the SOS page will open automatically in:</p>
+ 
+        <div class="countdown" id="countdown" aria-live="polite">15</div>
+ 
+        <p id="alertMessage" aria-live="polite">
+            Press "I'm Okay" to cancel this alert.
+        </p>
+ 
+        <div>
+            <button class="alert-button cancel-button" id="cancelButton">
+                I'm Okay
+            </button>
+ 
+            <button class="alert-button help-button" id="helpButton">
+                I Need Help Now
+            </button>
+        </div>
+ 
+        <a class="alert-button back-button" href="dashboard.html">
+            Back to Dashboard
+        </a>
+ 
+        <div class="demo-note">
+            <strong>Important:</strong> This is a prototype. When the
+            countdown ends, the SOS page opens, where a contact can be
+            alerted with one tap. Nothing is sent automatically, and this
+            must not replace calling emergency services (112 in India).
+        </div>
+    </section>
+ 
+</main>
+ 
+<footer>
+    <p>© 2026 ElderlySafe | Community Service Project</p>
+</footer>
+ 
+<script>
+    const countdownDisplay = document.getElementById("countdown");
+    const message = document.getElementById("alertMessage");
+    const cancelButton = document.getElementById("cancelButton");
+    const helpButton = document.getElementById("helpButton");
+ 
+    let seconds = 15;
+    let finished = false;
+ 
+    // Vibrate the phone, if it supports it, to get attention
+    if (navigator.vibrate) {
+        navigator.vibrate([300, 150, 300, 150, 300]);
+    }
+ 
+    function goToSos() {
+        if (finished) {
+            return;
+        }
+        finished = true;
+        clearInterval(timer);
+        window.location.href = "sos-sent.html?auto=1";
+    }
+ 
+    const timer = setInterval(function () {
+        if (finished) {
+            return;
+        }
+ 
+        seconds--;
+        countdownDisplay.textContent = seconds;
+ 
+        if (navigator.vibrate && seconds > 0 && seconds <= 5) {
+            navigator.vibrate(150);
+        }
+ 
+        if (seconds <= 0) {
+            message.textContent = "No response. Opening the SOS page...";
+            goToSos();
+        }
+    }, 1000);
+ 
+    cancelButton.addEventListener("click", function () {
+        finished = true;
+        clearInterval(timer);
+ 
+        countdownDisplay.textContent = "✓";
+        message.textContent =
+            "Glad you are okay. The alert was cancelled and nobody was notified.";
+ 
+        cancelButton.disabled = true;
+        helpButton.disabled = true;
+    });
+ 
+    helpButton.addEventListener("click", function () {
+        goToSos();
+    });
+</script>
+ 
+<script type="module" src="js/auth-guard.js"></script>
+ 
+</body>
+</html>

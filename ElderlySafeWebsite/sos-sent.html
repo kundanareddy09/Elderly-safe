@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SOS Status - ElderlySafe</title>
+    <link rel="stylesheet" href="css/style.css">
+ 
+    <style>
+        .sos-container {
+            max-width: 700px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+ 
+        .sos-card {
+            background: white;
+            padding: 35px 25px;
+            text-align: center;
+            border-radius: 16px;
+            border: 2px solid #f2b7b7;
+            box-shadow: 0 5px 20px #123c5515;
+        }
+ 
+        .sos-card h1 {
+            color: #c62828;
+            margin-bottom: 15px;
+        }
+ 
+        .sos-card p {
+            margin: 12px 0;
+        }
+ 
+        .status-box {
+            margin: 22px 0;
+            padding: 16px;
+            background: #f1f8fa;
+            border-radius: 9px;
+            text-align: left;
+            overflow-wrap: anywhere;
+        }
+ 
+        .status-box h2 {
+            color: #176d78;
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+ 
+        .sos-button {
+            display: inline-block;
+            padding: 13px 20px;
+            margin: 8px;
+            border: none;
+            border-radius: 8px;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 15px;
+            background: #176d78;
+            color: white;
+        }
+ 
+        .sos-button.secondary {
+            background: #e7edf1;
+            color: #243447;
+        }
+ 
+        .sos-button.danger {
+            background: #c62828;
+        }
+ 
+        .sos-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+ 
+        .demo-note {
+            margin-top: 22px;
+            padding: 14px;
+            background: #fff5df;
+            border-radius: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+ 
+<body>
+ 
+<header>
+    <h2>ElderlySafe</h2>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="dashboard.html">Dashboard</a>
+        <a href="contact.html">Contacts</a>
+    </nav>
+</header>
+ 
+<main class="sos-container">
+ 
+    <section class="sos-card">
+        <div style="font-size:55px" aria-hidden="true">🚨</div>
+ 
+        <h1>SOS Request Recorded</h1>
+ 
+        <div class="status-box">
+            <h2>Request Status</h2>
+            <p id="timeText">Time: --</p>
+            <p id="locationText">Location: requesting permission...</p>
+        </div>
+ 
+        <div class="status-box">
+            <h2>Email Alert</h2>
+            <p id="emailStatus" aria-live="polite">Getting ready...</p>
+            <button class="sos-button danger" id="emailAll" disabled>
+                Send email alert to all contacts
+            </button>
+        </div>
+ 
+        <div class="status-box">
+            <h2>Your Emergency Contacts</h2>
+            <div id="contactsBox">
+                <p>Loading contacts...</p>
+            </div>
+        </div>
+ 
+        <div>
+            <a class="sos-button" href="contact.html">View Contacts</a>
+            <a class="sos-button secondary" href="dashboard.html">Back to Dashboard</a>
+        </div>
+ 
+        <div class="demo-note">
+            <strong>Important:</strong> This is a prototype. Emails are sent
+            from this browser, so the page must stay open and online. They
+            may land in a spam folder, and this must not replace calling
+            emergency services (112 in India).
+        </div>
+    </section>
+ 
+</main>
+ 
+<footer>
+    <p>© 2026 ElderlySafe | Community Service Project</p>
+</footer>
+ 
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4.4.1/dist/email.min.js"></script>
+ 
+<script type="module">
+    import { auth, db } from "./js/firebase-config.js";
+    import {
+        onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import {
+        collection,
+        getDocs,
+        query,
+        orderBy
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+ 
+    const EMAILJS_PUBLIC_KEY = "GW_azzh_OcKkxwiRP";
+    const EMAILJS_SERVICE_ID = "service_2rijmnc";
+    const EMAILJS_TEMPLATE_ID = "template_qbwkdfq";
+    const COUNTRY_CODE = "91";            // India. Change for other countries.
+    const MIN_GAP_MS = 60000;             // at most one email alert per minute
+    const LAST_SENT_KEY = "elderlySafeLastEmailAlert";
+ 
+    const autoMode = new URLSearchParams(window.location.search).get("auto");
+    const isAuto = autoMode === "1" || autoMode === "sos";
+ 
+    const box = document.getElementById("contactsBox");
+    const locationText = document.getElementById("locationText");
+    const emailStatus = document.getElementById("emailStatus");
+    const emailButton = document.getElementById("emailAll");
+ 
+    let mapLink = "";
+    let userName = "A user";
+    let contacts = [];
+ 
+    document.getElementById("timeText").textContent =
+        "Time: " + new Date().toLocaleString();
+ 
+    if (autoMode === "1") {
+        document.querySelector("h1").textContent = "Fall detected - no response";
+    }
+ 
+    if (window.emailjs) {
+        emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
+    }
+ 
+    function sleep(ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, ms); });
+    }
+ 
+    function setEmailStatus(text) {
+        emailStatus.textContent = text;
+    }
+ 
+    function show(text) {
+        box.replaceChildren();
+        const p = document.createElement("p");
+        p.textContent = text;
+        box.appendChild(p);
+    }
+ 
+    // ---- Location ----
+    let resolveLocation;
+    const locationReady = new Promise(function (resolve) {
+        resolveLocation = resolve;
+    });
+ 
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            function (position) {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                mapLink = "https://www.google.com/maps?q=" + lat + "," + lon;
+                locationText.textContent =
+                    "Location: ready (" + lat.toFixed(5) + ", " + lon.toFixed(5) + ")";
+                resolveLocation();
+            },
+            function () {
+                locationText.textContent =
+                    "Location: not available. Messages will say so.";
+                resolveLocation();
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+    } else {
+        locationText.textContent = "Location: not supported by this browser.";
+        resolveLocation();
+    }
+ 
+    // ---- WhatsApp message ----
+    function buildWhatsAppMessage() {
+        let text =
+            "EMERGENCY ALERT from ElderlySafe: " + userName +
+            " may need help. SOS was triggered at " +
+            new Date().toLocaleString() + ". ";
+ 
+        text += mapLink
+            ? "Location: " + mapLink
+            : "Location is not available. Please call them now.";
+ 
+        return text;
+    }
+ 
+    // ---- Email alerts ----
+    async function sendEmails() {
+        if (!window.emailjs) {
+            setEmailStatus("Email service could not load. Check your internet connection.");
+            return;
+        }
+ 
+        const withEmail = contacts.filter(function (c) { return c.email; });
+ 
+        if (withEmail.length === 0) {
+            setEmailStatus("No contact has an email address. Add one on the Contacts page.");
+            return;
+        }
+ 
+        try {
+            const last = Number(localStorage.getItem(LAST_SENT_KEY) || 0);
+            if (Date.now() - last < MIN_GAP_MS) {
+                setEmailStatus("An email alert was already sent in the last minute. Please wait before sending again.");
+                return;
+            }
+        } catch (error) {
+            // Storage unavailable: carry on without the limit
+        }
+ 
+        emailButton.disabled = true;
+        const time = new Date().toLocaleString();
+        let sent = 0;
+        const failed = [];
+ 
+        for (let i = 0; i < withEmail.length; i++) {
+            const c = withEmail[i];
+            setEmailStatus("Sending " + (i + 1) + " of " + withEmail.length + "...");
+ 
+            try {
+                await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+                    to_email: c.email,
+                    to_name: c.name,
+                    from_name: userName,
+                    time: time,
+                    map_link: mapLink || "Location not available"
+                });
+                sent++;
+            } catch (error) {
+                failed.push(c.name + (error && error.text ? " (" + error.text + ")" : ""));
+            }
+ 
+            if (i < withEmail.length - 1) {
+                await sleep(1100);   // EmailJS allows about 1 request per second
+            }
+        }
+ 
+        if (sent > 0) {
+            try {
+                localStorage.setItem(LAST_SENT_KEY, String(Date.now()));
+            } catch (error) {
+                // ignore
+            }
+        }
+ 
+        let summary = "Email sent to " + sent + " of " + withEmail.length + " contacts.";
+        if (failed.length > 0) {
+            summary += " Failed: " + failed.join(", ") + ".";
+        }
+        setEmailStatus(summary);
+        emailButton.disabled = false;
+    }
+ 
+    emailButton.addEventListener("click", sendEmails);
+ 
+    // ---- Load contacts, then (if opened by a fall) send automatically ----
+    onAuthStateChanged(auth, function (user) {
+        if (!user) {
+            window.location.href = "login.html";
+            return;
+        }
+ 
+        if (user.displayName) {
+            userName = user.displayName;
+        }
+ 
+        const ref = collection(db, "users", user.uid, "contacts");
+ 
+        getDocs(query(ref, orderBy("createdAt")))
+            .then(function (snapshot) {
+                contacts = snapshot.docs.map(function (item) { return item.data(); });
+ 
+                if (contacts.length === 0) {
+                    show("No emergency contacts saved yet. Add one on the Contacts page.");
+                    setEmailStatus("No contacts to alert.");
+                    return;
+                }
+ 
+                box.replaceChildren();
+ 
+                contacts.forEach(function (c) {
+                    const row = document.createElement("div");
+                    row.style.margin = "10px 0 16px";
+ 
+                    const label = document.createElement("p");
+                    label.style.textAlign = "left";
+                    label.textContent =
+                        c.name + " (" + c.relationship + ") - " + c.phone +
+                        (c.email ? " - " + c.email : " - no email");
+ 
+                    const whatsapp = document.createElement("button");
+                    whatsapp.className = "sos-button";
+                    whatsapp.textContent = "Send WhatsApp alert";
+                    whatsapp.addEventListener("click", function () {
+                        const url =
+                            "https://wa.me/" + COUNTRY_CODE + c.phone +
+                            "?text=" + encodeURIComponent(buildWhatsAppMessage());
+                        window.open(url, "_blank", "noopener");
+                    });
+ 
+                    const call = document.createElement("a");
+                    call.className = "sos-button secondary";
+                    call.href = "tel:" + c.phone;
+                    call.textContent = "Call";
+ 
+                    row.append(label, whatsapp, call);
+                    box.appendChild(row);
+                });
+ 
+                emailButton.disabled = false;
+ 
+                if (isAuto) {
+                    setEmailStatus("Waiting for your location, then sending emails automatically...");
+ 
+                    // Wait for the location, but not longer than 8 seconds
+                    Promise.race([locationReady, sleep(8000)]).then(sendEmails);
+                } else {
+                    setEmailStatus("Press the button to email all contacts that have an email address.");
+                }
+            })
+            .catch(function (error) {
+                show("Could not load contacts. (" + error.code + ")");
+                setEmailStatus("Could not load contacts, so no email was sent.");
+            });
+    });
+</script>
+ 
+<script type="module" src="js/auth-guard.js"></script>
+ 
+</body>
+</html>

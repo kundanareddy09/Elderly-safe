@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - ElderlySafe</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .form-card {
+            max-width: 440px;
+            margin: 60px auto;
+            padding: 32px;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 4px 18px #123c5520;
+        }
+        .form-card h1 { text-align: center; margin-bottom: 24px; }
+        .form-card label { display: block; margin-top: 16px; font-weight: bold; }
+        .form-card input {
+            width: 100%;
+            padding: 12px;
+            margin-top: 6px;
+            border: 1px solid #b8cbd5;
+            border-radius: 7px;
+        }
+        .form-card button {
+            width: 100%;
+            margin-top: 22px;
+            padding: 13px;
+            background: #176d78;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+        .form-card button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .form-card p { text-align: center; margin-top: 18px; }
+        #message { color: #c62828; overflow-wrap: anywhere; }
+        #resetLink { cursor: pointer; color: #176d78; text-decoration: underline; }
+    </style>
+</head>
+<body>
+ 
+<header>
+    <h2>ElderlySafe</h2>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="register.html">Register</a>
+    </nav>
+</header>
+ 
+<main class="form-card">
+    <h1>Welcome Back</h1>
+    <p>Sign in to access your safety dashboard.</p>
+ 
+    <form id="loginForm">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" autocomplete="email" required>
+ 
+        <label for="password">Password</label>
+        <input type="password" id="password" autocomplete="current-password" required>
+ 
+        <button type="submit" id="loginButton">Login</button>
+    </form>
+ 
+    <p><a id="resetLink">Forgot password?</a></p>
+    <p>New user? <a href="register.html">Create an account</a></p>
+    <p id="message" aria-live="polite"></p>
+</main>
+ 
+<script type="module">
+    import { auth } from "./js/firebase-config.js";
+    import {
+        signInWithEmailAndPassword,
+        sendPasswordResetEmail,
+        onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+ 
+    const form = document.getElementById("loginForm");
+    const message = document.getElementById("message");
+    const button = document.getElementById("loginButton");
+ 
+    function friendlyError(code) {
+        switch (code) {
+            case "auth/invalid-credential":
+            case "auth/wrong-password":
+            case "auth/user-not-found":
+                return "Incorrect email or password.";
+            case "auth/too-many-requests":
+                return "Too many attempts. Please wait a few minutes and try again.";
+            case "auth/network-request-failed":
+                return "Network problem. Check your internet connection.";
+            case "auth/invalid-email":
+                return "Please enter a valid email address.";
+            default:
+                return "Could not sign in. Check your Firebase setup. (" + code + ")";
+        }
+    }
+ 
+    // Already signed in? Go straight to the dashboard
+    onAuthStateChanged(auth, function (user) {
+        if (user) {
+            window.location.href = "dashboard.html";
+        }
+    });
+ 
+    form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        message.style.color = "#c62828";
+        message.textContent = "";
+        button.disabled = true;
+ 
+        signInWithEmailAndPassword(
+            auth,
+            document.getElementById("email").value.trim(),
+            document.getElementById("password").value
+        )
+        .then(function () {
+            window.location.href = "dashboard.html";
+        })
+        .catch(function (error) {
+            message.textContent = friendlyError(error.code);
+            button.disabled = false;
+        });
+    });
+ 
+    document.getElementById("resetLink").addEventListener("click", function () {
+        const email = document.getElementById("email").value.trim();
+ 
+        if (!email) {
+            message.style.color = "#c62828";
+            message.textContent = "Type your email above first, then click Forgot password.";
+            return;
+        }
+ 
+        sendPasswordResetEmail(auth, email)
+            .then(function () {
+                message.style.color = "#176747";
+                message.textContent = "If that email has an account, a reset link has been sent.";
+            })
+            .catch(function (error) {
+                message.style.color = "#c62828";
+                message.textContent = friendlyError(error.code);
+            });
+    });
+</script>
+ 
+</body>
+</html>

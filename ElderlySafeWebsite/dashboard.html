@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - ElderlySafe</title>
+    <link rel="stylesheet" href="css/style.css">
+ 
+    <style>
+        .dashboard {
+            max-width: 1100px;
+            margin: 35px auto;
+            padding: 20px;
+        }
+ 
+        .welcome {
+            margin-bottom: 25px;
+        }
+ 
+        .welcome h1 {
+            color: #123c55;
+            margin-bottom: 8px;
+        }
+ 
+        .status-card {
+            background: #e0f7ed;
+            border: 1px solid #a5dec8;
+            border-radius: 12px;
+            padding: 22px;
+            margin-bottom: 25px;
+        }
+ 
+        .status-card h2 {
+            color: #176747;
+            margin-bottom: 8px;
+        }
+ 
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+        }
+ 
+        .dash-card {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid #dce7ed;
+            box-shadow: 0 4px 15px #123c5510;
+        }
+ 
+        .dash-card h2 {
+            margin-bottom: 12px;
+            color: #176d78;
+        }
+ 
+        .dash-button {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 12px 18px;
+            background: #176d78;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            text-decoration: none;
+            cursor: pointer;
+            font-size: 15px;
+        }
+ 
+        .sos-button {
+            background: #c62828;
+            font-weight: bold;
+            font-size: 17px;
+            width: 100%;
+        }
+ 
+        .sos-button:hover {
+            background: #a71919;
+        }
+ 
+        #result {
+            margin-top: 15px;
+            overflow-wrap: anywhere;
+        }
+ 
+        .activity {
+            margin-top: 25px;
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+        }
+ 
+        @media (max-width: 650px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+ 
+<body>
+ 
+<header>
+    <h2>ElderlySafe</h2>
+ 
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="contact.html">Contacts</a>
+        <a href="fall-monitor.html">Fall Monitor</a>
+        <a href="login.html">Logout</a>
+    </nav>
+</header>
+ 
+<main class="dashboard">
+ 
+    <section class="welcome">
+        <h1>Safety Dashboard</h1>
+        <p>Welcome! Your safety and well-being matter to us.</p>
+    </section>
+ 
+    <section class="status-card">
+        <h2>✓ Safety Dashboard Active</h2>
+        <p>
+            Your dashboard is ready. Automatic fall monitoring
+            is not active in this demonstration.
+        </p>
+    </section>
+ 
+    <div class="dashboard-grid">
+ 
+        <section class="dash-card">
+            <h2>Emergency SOS</h2>
+            <p>
+                Use this button to start an emergency request.
+                You will be asked to confirm before proceeding.
+            </p>
+ 
+            <button class="dash-button sos-button" id="sosButton">
+                Send Emergency SOS
+            </button>
+        </section>
+ 
+        <section class="dash-card">
+            <h2>Fall Detection Test</h2>
+            <p>
+                Test the fall-alert screen using a simulated
+                event. This does not detect a real fall.
+            </p>
+ 
+            <button class="dash-button" id="fallButton">
+                Test Fall Alert
+            </button>
+        </section>
+ 
+        <section class="dash-card">
+            <h2>Emergency Contacts</h2>
+            <p>
+                Open the contacts page to view or manage
+                your emergency contact details.
+            </p>
+ 
+            <a class="dash-button" href="contact.html">
+                Manage Contacts
+            </a>
+        </section>
+ 
+        <section class="dash-card">
+            <h2>My Location</h2>
+            <p>
+                Allow location access to view your current
+                position in the browser.
+            </p>
+ 
+            <button class="dash-button" id="locationButton">
+                Get My Location
+            </button>
+        </section>
+ 
+    </div>
+ 
+    <section class="activity">
+        <h2>Safety Activity</h2>
+        <p id="result" aria-live="polite">
+            No test or emergency action performed yet.
+        </p>
+    </section>
+ 
+</main>
+ 
+<footer>
+    <p>© 2026 ElderlySafe | Community Service Project</p>
+</footer>
+ 
+<script>
+    const result = document.getElementById("result");
+ 
+    // SOS button: confirm, then open the SOS status page
+    document.getElementById("sosButton")
+        .addEventListener("click", function () {
+            const confirmed = confirm(
+                "Do you want to initiate an emergency SOS request?"
+            );
+ 
+            if (confirmed) {
+                window.location.href = "sos-sent.html?auto=sos";
+            }
+        });
+ 
+    // Fall test button: open the fall alert page
+    document.getElementById("fallButton")
+        .addEventListener("click", function () {
+            window.location.href = "fall-detected.html";
+        });
+ 
+    // Location button
+    document.getElementById("locationButton")
+        .addEventListener("click", function () {
+ 
+            if (!navigator.geolocation) {
+                result.textContent =
+                    "Geolocation is not supported by this browser.";
+                return;
+            }
+ 
+            result.textContent = "Requesting location permission...";
+ 
+            navigator.geolocation.getCurrentPosition(
+                function (position) {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+ 
+                    result.textContent =
+                        "Location retrieved: " +
+                        latitude.toFixed(5) + ", " +
+                        longitude.toFixed(5);
+ 
+                    const mapLink = document.createElement("a");
+ 
+                    mapLink.href =
+                        "https://www.google.com/maps?q=" +
+                        latitude + "," + longitude;
+ 
+                    mapLink.target = "_blank";
+                    mapLink.rel = "noopener noreferrer";
+                    mapLink.textContent = " Open location in Google Maps";
+ 
+                    result.appendChild(mapLink);
+                },
+ 
+                function (error) {
+                    result.textContent =
+                        "Unable to get location. Please allow location access and try again.";
+                }
+            );
+        });
+</script>
+ 
+<script type="module" src="js/auth-guard.js"></script>
+ 
+</body>
+</html>

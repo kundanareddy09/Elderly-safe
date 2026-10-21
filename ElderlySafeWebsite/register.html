@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - ElderlySafe</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .form-card {
+            max-width: 460px;
+            margin: 40px auto;
+            padding: 30px;
+            background: white;
+            border-radius: 14px;
+            box-shadow: 0 4px 18px #123c5520;
+        }
+        .form-card label { display: block; margin-top: 14px; font-weight: bold; }
+        .form-card input,
+        .form-card select {
+            width: 100%;
+            padding: 11px;
+            margin-top: 6px;
+            border: 1px solid #b8cbd5;
+            border-radius: 7px;
+        }
+        .form-card button {
+            width: 100%;
+            margin-top: 22px;
+            padding: 13px;
+            background: #176d78;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+        }
+        .form-card button:disabled { opacity: 0.6; cursor: not-allowed; }
+        .form-card p { margin-top: 14px; }
+        #message { color: #c62828; overflow-wrap: anywhere; }
+    </style>
+</head>
+<body>
+ 
+<header>
+    <h2>ElderlySafe</h2>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="login.html">Login</a>
+    </nav>
+</header>
+ 
+<main class="form-card">
+    <h1>Create Account</h1>
+    <p>Enter your details to begin.</p>
+ 
+    <form id="registerForm">
+        <label for="name">Full Name</label>
+        <input type="text" id="name" autocomplete="name" required>
+ 
+        <label for="email">Email Address</label>
+        <input type="email" id="email" autocomplete="email" required>
+ 
+        <label for="phone">Phone Number</label>
+        <input type="tel" id="phone" autocomplete="tel" required>
+ 
+        <label for="role">User Type</label>
+        <select id="role" required>
+            <option value="">Select user type</option>
+            <option value="elderly">Elderly Person</option>
+            <option value="differently-abled">Differently-Abled Person</option>
+            <option value="caregiver">Family Member / Caregiver</option>
+        </select>
+ 
+        <label for="password">Create Password (min 8 characters)</label>
+        <input type="password" id="password" minlength="8" autocomplete="new-password" required>
+ 
+        <button type="submit" id="registerButton">Register</button>
+        <p id="message" aria-live="polite"></p>
+    </form>
+ 
+    <p>Already registered? <a href="login.html">Login</a></p>
+</main>
+ 
+<script type="module">
+    import { auth } from "./js/firebase-config.js";
+    import {
+        createUserWithEmailAndPassword,
+        updateProfile
+    } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+ 
+    const form = document.getElementById("registerForm");
+    const message = document.getElementById("message");
+    const button = document.getElementById("registerButton");
+ 
+    function friendlyError(code) {
+        switch (code) {
+            case "auth/email-already-in-use":
+                return "This email is already registered. Try logging in.";
+            case "auth/weak-password":
+                return "Password is too weak. Use at least 8 characters.";
+            case "auth/invalid-email":
+                return "Please enter a valid email address.";
+            case "auth/network-request-failed":
+                return "Network problem. Check your internet connection.";
+            default:
+                return "Could not create the account. Check your Firebase setup. (" + code + ")";
+        }
+    }
+ 
+    form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        message.style.color = "#c62828";
+        message.textContent = "";
+        button.disabled = true;
+ 
+        const name = document.getElementById("name").value.trim();
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value;
+ 
+        createUserWithEmailAndPassword(auth, email, password)
+            .then(function (credential) {
+                return updateProfile(credential.user, { displayName: name });
+            })
+            .then(function () {
+                message.style.color = "#176747";
+                message.textContent = "Account created! Opening your dashboard...";
+                setTimeout(function () {
+                    window.location.href = "dashboard.html";
+                }, 900);
+            })
+            .catch(function (error) {
+                message.textContent = friendlyError(error.code);
+                button.disabled = false;
+            });
+    });
+</script>
+ 
+</body>
+</html>

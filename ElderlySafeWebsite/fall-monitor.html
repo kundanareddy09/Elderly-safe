@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fall Monitor - ElderlySafe</title>
+    <link rel="stylesheet" href="css/style.css">
+ 
+    <style>
+        .monitor-container {
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+ 
+        .monitor-card {
+            background: white;
+            padding: 30px;
+            border-radius: 14px;
+            border: 1px solid #dce7ed;
+            box-shadow: 0 4px 18px #123c5515;
+            text-align: center;
+        }
+ 
+        .monitor-card h1 {
+            color: #176d78;
+            margin-bottom: 12px;
+        }
+ 
+        .monitor-card p {
+            margin: 12px 0;
+        }
+ 
+        .reading {
+            font-size: 38px;
+            font-weight: bold;
+            color: #123c55;
+            margin: 18px 0 4px;
+        }
+ 
+        .state {
+            padding: 12px;
+            border-radius: 8px;
+            background: #f1f8fa;
+            margin: 16px 0;
+            overflow-wrap: anywhere;
+        }
+ 
+        .m-button {
+            display: inline-block;
+            padding: 12px 18px;
+            margin: 8px 6px 0;
+            background: #176d78;
+            color: white;
+            border: none;
+            border-radius: 7px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 15px;
+        }
+ 
+        .m-button.stop {
+            background: #c62828;
+        }
+ 
+        .m-button.secondary {
+            background: #e7edf1;
+            color: #243447;
+        }
+ 
+        .notice {
+            margin-top: 22px;
+            padding: 14px;
+            background: #fff5df;
+            border-radius: 8px;
+            text-align: left;
+        }
+    </style>
+</head>
+ 
+<body>
+ 
+<header>
+    <h2>ElderlySafe</h2>
+    <nav>
+        <a href="index.html">Home</a>
+        <a href="dashboard.html">Dashboard</a>
+    </nav>
+</header>
+ 
+<main class="monitor-container">
+    <section class="monitor-card">
+        <h1>Fall Monitor</h1>
+ 
+        <p>
+            Uses your phone's motion sensor to look for a
+            free-fall followed by a hard impact.
+        </p>
+ 
+        <div class="reading" id="reading">-- m/s²</div>
+        <p>Current acceleration</p>
+ 
+        <div class="state" id="state" aria-live="polite">
+            Monitoring is off.
+        </div>
+ 
+        <button class="m-button" id="startButton">Start Monitoring</button>
+        <button class="m-button stop" id="stopButton" disabled>Stop</button>
+        <button class="m-button secondary" id="simulateButton">
+            Simulate Fall (for laptops)
+        </button>
+ 
+        <p>
+            <a class="m-button secondary" href="dashboard.html">
+                Back to Dashboard
+            </a>
+        </p>
+ 
+        <div class="notice">
+            <strong>Important:</strong> This is a simple threshold
+            detector for a learning project. It can miss real falls
+            and can trigger by mistake (for example, if the phone is
+            dropped). It must not be relied on for real safety.
+            Browsers only give motion data on a secure (HTTPS)
+            page, and most laptops have no motion sensor.
+        </div>
+    </section>
+</main>
+ 
+<footer>
+    <p>© 2026 ElderlySafe | Community Service Project</p>
+</footer>
+ 
+<script>
+    const FREE_FALL_LIMIT = 3;    // m/s² (about 0.3 g)
+    const IMPACT_LIMIT = 25;      // m/s² (about 2.5 g)
+    const WINDOW_MS = 1000;       // impact must follow free-fall within 1 s
+ 
+    const reading = document.getElementById("reading");
+    const stateBox = document.getElementById("state");
+    const startButton = document.getElementById("startButton");
+    const stopButton = document.getElementById("stopButton");
+    const simulateButton = document.getElementById("simulateButton");
+ 
+    let monitoring = false;
+    let freeFallTime = 0;
+    let gotData = false;
+    let wakeLock = null;
+ 
+    // Keep the screen awake while monitoring (if the browser supports it)
+    async function requestWakeLock() {
+        if (!("wakeLock" in navigator)) {
+            return false;
+        }
+        try {
+            wakeLock = await navigator.wakeLock.request("screen");
+            return true;
+        } catch (error) {
+            return false;
+        }
+    }
+ 
+    function releaseWakeLock() {
+        if (wakeLock) {
+            wakeLock.release().catch(function () {});
+            wakeLock = null;
+        }
+    }
+ 
+    // The browser drops the lock when the tab is hidden, so ask again on return
+    document.addEventListener("visibilitychange", function () {
+        if (monitoring && document.visibilityState === "visible") {
+            requestWakeLock();
+        }
+    });
+ 
+    function triggerFall() {
+        stopMonitoring();
+        window.location.href = "fall-detected.html";
+    }
+ 
+    function handleMotion(event) {
+        const a = event.accelerationIncludingGravity;
+        if (!a || a.x === null) {
+            return;
+        }
+ 
+        gotData = true;
+ 
+        const magnitude = Math.sqrt(a.x * a.x + a.y * a.y + a.z * a.z);
+        reading.textContent = magnitude.toFixed(1) + " m/s²";
+ 
+        const now = Date.now();
+ 
+        if (magnitude < FREE_FALL_LIMIT) {
+            freeFallTime = now;
+            stateBox.textContent = "Free-fall-like movement noticed...";
+        }
+ 
+        if (magnitude > IMPACT_LIMIT && freeFallTime > 0 &&
+            now - freeFallTime < WINDOW_MS) {
+            triggerFall();
+        }
+ 
+        if (freeFallTime > 0 && now - freeFallTime > WINDOW_MS) {
+            freeFallTime = 0;
+            stateBox.textContent = "Monitoring is on. Movement looks normal.";
+        }
+    }
+ 
+    function startListening() {
+        window.addEventListener("devicemotion", handleMotion);
+        monitoring = true;
+        gotData = false;
+        startButton.disabled = true;
+        stopButton.disabled = false;
+        stateBox.textContent = "Monitoring is on. Movement looks normal.";
+ 
+        requestWakeLock().then(function (ok) {
+            if (monitoring && gotData === false && ok) {
+                stateBox.textContent =
+                    "Monitoring is on. The screen will stay awake. Keep this page open.";
+            } else if (monitoring && !ok) {
+                stateBox.textContent =
+                    "Monitoring is on, but this browser cannot keep the screen awake. Do not lock the phone.";
+            }
+        });
+ 
+        setTimeout(function () {
+            if (monitoring && !gotData) {
+                stateBox.textContent =
+                    "No motion data received. This device or page may not allow it. Try a phone over HTTPS, or use Simulate Fall.";
+            }
+        }, 3000);
+    }
+ 
+    function stopMonitoring() {
+        window.removeEventListener("devicemotion", handleMotion);
+        monitoring = false;
+        releaseWakeLock();
+        startButton.disabled = false;
+        stopButton.disabled = true;
+        stateBox.textContent = "Monitoring is off.";
+    }
+ 
+    startButton.addEventListener("click", function () {
+        if (typeof DeviceMotionEvent === "undefined") {
+            stateBox.textContent =
+                "Motion sensors are not supported on this browser.";
+            return;
+        }
+ 
+        // iPhones require an explicit permission request
+        if (typeof DeviceMotionEvent.requestPermission === "function") {
+            DeviceMotionEvent.requestPermission()
+                .then(function (response) {
+                    if (response === "granted") {
+                        startListening();
+                    } else {
+                        stateBox.textContent = "Motion permission was denied.";
+                    }
+                })
+                .catch(function () {
+                    stateBox.textContent =
+                        "Could not request motion permission.";
+                });
+        } else {
+            startListening();
+        }
+    });
+ 
+    stopButton.addEventListener("click", stopMonitoring);
+ 
+    simulateButton.addEventListener("click", function () {
+        stateBox.textContent = "Simulating a fall...";
+        setTimeout(triggerFall, 800);
+    });
+</script>
+ 
+<script type="module" src="js/auth-guard.js"></script>
+ 
+</body>
+</html>
