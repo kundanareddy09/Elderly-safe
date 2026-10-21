@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -15,8 +14,9 @@
             <a href="index.html">Home</a>
             <a href="#about">About</a>
             <a href="#features">Features</a>
+            <!-- Added Emergency nav link -->
+            <a href="#emergency-contacts">Emergency</a>
             <a href="#contact">Contact</a>
-            <!-- CORRECT relative links -->
             <a href="login.html">Login</a>
             <a href="register.html">Register</a>
         </nav>
@@ -87,6 +87,50 @@
             </div>
         </section>
 
+        <!-- NEW: Emergency Contacts & Nearby Hospitals Section Added Here -->
+        <section id="emergency-contacts" class="section emergency-section">
+            <h2>Emergency Contacts & Nearby Hospitals</h2>
+            <p>Quickly access urgent numbers or find immediate medical assistance nearby.</p>
+
+            <div class="emergency-grid" style="display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; margin-top: 30px;">
+                <!-- Ambulance Card -->
+                <div class="emergency-card highlight" style="background: #fff5f5; border: 2px solid #e63946; border-radius: 12px; padding: 20px; width: 240px; text-align: center;">
+                    <h3>Ambulance</h3>
+                    <p class="phone-number" style="font-size: 1.8rem; font-weight: bold; color: #e63946; margin: 10px 0;">108</p>
+                    <a href="tel:108" class="btn-call" style="background: #e63946; color: white; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Call Now</a>
+                </div>
+
+                <!-- National Emergency Card -->
+                <div class="emergency-card" style="background: #ffffff; border: 1px solid #ddd; border-radius: 12px; padding: 20px; width: 240px; text-align: center;">
+                    <h3>National SOS</h3>
+                    <p class="phone-number" style="font-size: 1.8rem; font-weight: bold; color: #333; margin: 10px 0;">112</p>
+                    <a href="tel:112" class="btn-call" style="background: #333; color: white; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Call 112</a>
+                </div>
+
+                <!-- Elderly Helpline Card -->
+                <div class="emergency-card" style="background: #ffffff; border: 1px solid #ddd; border-radius: 12px; padding: 20px; width: 240px; text-align: center;">
+                    <h3>Elderly Helpline</h3>
+                    <p class="phone-number" style="font-size: 1.5rem; font-weight: bold; color: #333; margin: 10px 0;">14567</p>
+                    <a href="tel:14567" class="btn-call" style="background: #2a9d8f; color: white; padding: 8px 14px; border-radius: 6px; text-decoration: none; font-weight: bold; display: inline-block;">Call Helpline</a>
+                </div>
+            </div>
+
+            <!-- Hospital Finder Action Box -->
+            <div class="hospital-finder-box" style="margin-top: 40px; background: #f1faee; padding: 25px; border-radius: 12px; text-align: center; max-width: 600px; margin-left: auto; margin-right: auto;">
+                <h3>🏥 Find Nearest Hospitals & ERs</h3>
+                <p>Locate medical facilities around your current location instantly.</p>
+                <div style="margin-top: 20px; display: flex; gap: 15px; justify-content: center; flex-wrap: wrap;">
+                    <a href="https://www.google.com/maps/search/hospitals+near+me" target="_blank" style="background: #0077b6; color: white; padding: 10px 18px; border-radius: 6px; text-decoration: none; font-weight: bold;">
+                        📍 Search on Google Maps
+                    </a>
+                    <button onclick="getExactLocationHospitals()" style="background: #2a9d8f; color: white; padding: 10px 18px; border-radius: 6px; font-weight: bold; border: none; cursor: pointer;">
+                        🎯 Use My GPS Location
+                    </button>
+                </div>
+                <p id="location-status" style="margin-top: 12px; font-size: 0.9rem; color: #555;"></p>
+            </div>
+        </section>
+
         <section id="contact" class="section">
             <h2>Stay Safe, Stay Connected</h2>
             <p>
@@ -100,5 +144,28 @@
         <p>© 2026 ElderlySafe | Community Service Project</p>
     </footer>
 
+    <!-- GPS Script for Nearest Hospitals -->
+    <script>
+        function getExactLocationHospitals() {
+            const status = document.getElementById("location-status");
+            if (!navigator.geolocation) {
+                status.textContent = "Geolocation is not supported by your browser.";
+                return;
+            }
+            status.textContent = "Locating your position...";
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lon = position.coords.longitude;
+                    window.open(`https://www.google.com/maps/search/hospitals/@${lat},${lon},14z`, "_blank");
+                    status.textContent = "Opening nearby hospitals...";
+                },
+                (error) => {
+                    status.textContent = "Unable to retrieve location. Opening default search...";
+                    window.open("https://www.google.com/maps/search/hospitals+near+me", "_blank");
+                }
+            );
+        }
+    </script>
 </body>
 </html>
